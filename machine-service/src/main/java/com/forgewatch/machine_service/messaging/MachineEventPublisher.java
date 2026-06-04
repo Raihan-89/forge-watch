@@ -1,9 +1,5 @@
 package com.forgewatch.machine_service.messaging;
 
-/**
- * @author Md. Raihan Shikder (Raihan-89)
- */
-
 import com.forgewatch.machine_service.config.RabbitMQConfig;
 import com.forgewatch.machine_service.dto.MachineResponse;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * @author Md. Raihan Shikder (Raihan-89)
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j

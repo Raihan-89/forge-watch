@@ -1,9 +1,5 @@
 package com.forgewatch.machine_service.controller;
 
-/**
- * @author Md. Raihan Shikder (Raihan-89)
- */
-
 import com.forgewatch.machine_service.dto.MachineRequest;
 import com.forgewatch.machine_service.dto.MachineResponse;
 import com.forgewatch.machine_service.enums.MachineStatus;
@@ -13,9 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
+/**
+ * @author Md. Raihan Shikder (Raihan-89)
+ */
 @RestController
 @RequestMapping("/api/machines")
 @RequiredArgsConstructor

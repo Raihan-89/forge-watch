@@ -1,9 +1,5 @@
 package com.forgewatch.machine_service.service;
 
-/**
- * @author Md. Raihan Shikder (Raihan-89)
- */
-
 import com.forgewatch.machine_service.dto.MachineRequest;
 import com.forgewatch.machine_service.dto.MachineResponse;
 import com.forgewatch.machine_service.entity.Machine;
@@ -17,6 +13,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * @author Md. Raihan Shikder (Raihan-89)
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

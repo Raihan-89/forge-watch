@@ -1,9 +1,5 @@
 package com.forgewatch.machine_service.entity;
 
-/**
- * @author Md. Raihan Shikder (Raihan-89)
- */
-
 import com.forgewatch.machine_service.enums.MachineStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -13,6 +9,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * @author Md. Raihan Shikder (Raihan-89)
+ */
 @Entity
 @Table(name = "machines")
 @Data

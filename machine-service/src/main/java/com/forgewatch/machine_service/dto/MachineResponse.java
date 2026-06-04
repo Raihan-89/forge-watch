@@ -1,9 +1,5 @@
 package com.forgewatch.machine_service.dto;
 
-/**
- * @author Md. Raihan Shikder (Raihan-89)
- */
-
 import com.forgewatch.machine_service.enums.MachineStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * @author Md. Raihan Shikder (Raihan-89)
+ */
 @Data
 @Builder
 @NoArgsConstructor
