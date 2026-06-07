@@ -22,7 +22,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private final List<String> openEndpoints = List.of(
             "/api/auth/register",
-            "/api/auth/login"
+            "/api/auth/login",
+            "/api/notifications/forgot-password",
+            "/api/notifications/validate-token",
+            "/api/notifications/reset-password",
+            "/api/notifications/send-otp",
+            "/api/notifications/verify-otp"
     );
 
     @Override

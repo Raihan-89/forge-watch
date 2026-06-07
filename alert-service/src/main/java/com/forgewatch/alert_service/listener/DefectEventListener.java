@@ -2,13 +2,25 @@ package com.forgewatch.alert_service.listener;
 
 import com.forgewatch.alert_service.config.RabbitMQConfig;
 import com.forgewatch.alert_service.dto.DefectAlertDto;
+import com.forgewatch.alert_service.service.EmailService;
+import com.forgewatch.alert_service.service.SmsService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class DefectEventListener {
+
+    private final EmailService emailService;
+
+    private final SmsService smsService;
+
+    @Value("${notification.supervisor.phone}")
+    private String supervisorPhone;
 
     @RabbitListener(queues = RabbitMQConfig.DEFECT_QUEUE)
     public void handleDefectEvent(DefectAlertDto defect) {
@@ -24,16 +36,8 @@ public class DefectEventListener {
         log.warn("Time          : {}", defect.getReportedAt());
         log.warn("=================================================");
 
-        sendDefectAlert(defect);
-    }
+        emailService.sendDefectAlertEmail(defect);
 
-    private void sendDefectAlert(DefectAlertDto defect) {
-        log.info("Sending defect alert to supervisor...");
-        log.info("Subject : {} Defect reported on machine {}",
-                defect.getSeverity(),
-                defect.getMachineCode());
-        log.info("Body    : {} - {}",
-                defect.getTitle(),
-                defect.getDescription());
+        smsService.sendDefectAlertSms(defect, supervisorPhone);
     }
 }

@@ -2,13 +2,25 @@ package com.forgewatch.alert_service.listener;
 
 import com.forgewatch.alert_service.config.RabbitMQConfig;
 import com.forgewatch.alert_service.dto.MachineAlertDto;
+import com.forgewatch.alert_service.service.EmailService;
+import com.forgewatch.alert_service.service.SmsService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class MachineEventListener {
+
+    private final EmailService emailService;
+
+    private final SmsService smsService;
+
+    @Value("${notification.supervisor.phone}")
+    private String supervisorPhone;
 
     @RabbitListener(queues = RabbitMQConfig.MACHINE_QUEUE)
     public void handleMachineEvent(MachineAlertDto machine) {
@@ -23,14 +35,8 @@ public class MachineEventListener {
         log.warn("Time          : {}", machine.getUpdatedAt());
         log.warn("=================================================");
 
-        sendMaintenanceAlert(machine);
-    }
+        emailService.sendMachineBreakdownEmail(machine);
 
-    private void sendMaintenanceAlert(MachineAlertDto machine) {
-        log.info("Sending maintenance alert to supervisor...");
-        log.info("Subject : URGENT - Machine {} is DOWN", machine.getMachineCode());
-        log.info("Body    : Machine {} in {} requires immediate attention.",
-                machine.getMachineName(),
-                machine.getDepartment());
+        smsService.sendMachineBreakdownSms(machine, supervisorPhone);
     }
 }
