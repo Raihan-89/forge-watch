@@ -21,6 +21,12 @@ public class TwilioConfig {
     @Value("${twilio.verify.service-sid}")
     private String verifyServiceSid;
 
+    @Value("${twilio.from-phone-number:}")
+    private String fromPhoneNumber;
+
+    @Value("${twilio.messaging-service-sid:}")
+    private String messagingServiceSid;
+
     @PostConstruct
     public void initTwilio() {
         Twilio.init(accountSid, authToken);
