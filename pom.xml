@@ -24,7 +24,7 @@
         <module>machine-service</module>
         <module>shift-service</module>
         <module>defect-service</module>
-<!--        <module>alert-service</module>-->
+        <module>alert-service</module>
         <module>api-gateway</module>
     </modules>
 
