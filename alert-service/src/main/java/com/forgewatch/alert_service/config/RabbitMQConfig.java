@@ -1,5 +1,6 @@
 package com.forgewatch.alert_service.config;
 
+import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -12,6 +13,16 @@ public class RabbitMQConfig {
     public static final String MACHINE_QUEUE = "machine.queue";
 
     public static final String DEFECT_QUEUE = "defect.queue";
+
+    @Bean
+    public Queue machineQueue() {
+        return new Queue(MACHINE_QUEUE, true);
+    }
+
+    @Bean
+    public Queue defectQueue() {
+        return new Queue(DEFECT_QUEUE, true);
+    }
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {

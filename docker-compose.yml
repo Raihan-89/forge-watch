@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+
+  # ==================== DATABASE ====================
+  forgewatchdb:
+    image: postgres:15
+    container_name: forgewatchdb
+    environment:
+      POSTGRES_DB: forgewatchdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - forgewatchdb_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - forgewatch-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== RABBITMQ ====================
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - forgewatch-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== REDIS ====================
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - forgewatch-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== AUTH SERVICE ====================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://forgewatchdb:5432/forgewatchdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: auth
+      JWT_SECRET: ThisIsASecretKeyForJWTGenerationForForgeWatchProject
+      JWT_EXPIRATION: 3600000
+    depends_on:
+      forgewatchdb:
+        condition: service_healthy
+    networks:
+      - forgewatch-network
+
+  # ==================== API GATEWAY ====================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_SERVICE_URI: http://auth-service:8081
+      MACHINE_SERVICE_URI: http://machine-service:8082
+      SHIFT_SERVICE_URI: http://shift-service:8083
+      DEFECT_SERVICE_URI: http://defect-service:8084
+      ALERT_SERVICE_URI: http://alert-service:8085
+      JWT_SECRET: ThisIsASecretKeyForJWTGenerationForForgeWatchProject
+    depends_on:
+      - auth-service
+    networks:
+      - forgewatch-network
+
+  # ==================== MACHINE SERVICE ====================
+  machine-service:
+    build:
+      context: ./machine-service
+      dockerfile: Dockerfile
+    container_name: machine-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://forgewatchdb:5432/forgewatchdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: machine
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      forgewatchdb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - forgewatch-network
+
+  # ==================== SHIFT SERVICE ====================
+  shift-service:
+    build:
+      context: ./shift-service
+      dockerfile: Dockerfile
+    container_name: shift-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://forgewatchdb:5432/forgewatchdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: shift
+    depends_on:
+      forgewatchdb:
+        condition: service_healthy
+    networks:
+      - forgewatch-network
+
+  # ==================== DEFECT SERVICE ====================
+  defect-service:
+    build:
+      context: ./defect-service
+      dockerfile: Dockerfile
+    container_name: defect-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://forgewatchdb:5432/forgewatchdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: defect
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      forgewatchdb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - forgewatch-network
+
+  # ==================== ALERT SERVICE ====================
+  alert-service:
+    build:
+      context: ./alert-service
+      dockerfile: Dockerfile
+    container_name: alert-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
+      SPRING_RABBITMQ_LISTENER_SIMPLE_MISSING_QUEUES_FATAL: "false"
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID}
+      NOTIFICATION_SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL}
+      NOTIFICATION_SUPERVISOR_PHONE: ${SUPERVISOR_PHONE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      defect-service:
+        condition: service_started
+      machine-service:
+        condition: service_started
+    networks:
+      - forgewatch-network
+
+volumes:
+  forgewatchdb_data:
+
+networks:
+  forgewatch-network:
+    driver: bridge
