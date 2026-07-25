@@ -17,6 +17,8 @@ public class DefectResponse {
 
     private Long id;
 
+    private String publicId;
+
     private String machineCode;
 
     private String department;
@@ -36,4 +38,8 @@ public class DefectResponse {
     private LocalDateTime reportedAt;
 
     private LocalDateTime resolvedAt;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 }

@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
+ * Response DTO for machine operations.
+ *
  * @author Md. Raihan Shikder (Raihan-89)
  */
 @Data
@@ -18,6 +20,8 @@ import java.time.LocalDateTime;
 public class MachineResponse {
 
     private Long id;
+
+    private String publicId;
 
     private String machineCode;
 

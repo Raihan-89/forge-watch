@@ -1,5 +1,7 @@
 package com.forgewatch.defect_service.service;
 
+import com.forgewatch.common.exception.InvalidOperationException;
+import com.forgewatch.common.exception.ResourceNotFoundException;
 import com.forgewatch.defect_service.dto.DefectRequest;
 import com.forgewatch.defect_service.dto.DefectResponse;
 import com.forgewatch.defect_service.entity.Defect;
@@ -10,6 +12,7 @@ import com.forgewatch.defect_service.repository.DefectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +20,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class DefectService {
 
     private final DefectRepository defectRepository;
@@ -39,20 +43,22 @@ public class DefectService {
 
         Defect saved = defectRepository.save(defect);
 
-        log.info("Defect reported on machine: {} by: {}",
-                saved.getMachineCode(),
-                saved.getReportedByEmail());
+        log.info("Defect reported on machine: {} by: {} (publicId: {})",
+                saved.getMachineCode(), saved.getReportedByEmail(), saved.getPublicId());
 
         DefectResponse response = mapToResponse(saved);
 
         if (request.getSeverity() == DefectSeverity.HIGH
                 || request.getSeverity() == DefectSeverity.CRITICAL) {
+            log.warn("High severity defect detected: {} on machine: {}",
+                    saved.getSeverity(), saved.getMachineCode());
             defectEventPublisher.publishDefectEvent(response);
         }
 
         return response;
     }
 
+    @Transactional(readOnly = true)
     public List<DefectResponse> getAllDefects() {
         return defectRepository.findAll()
                 .stream()
@@ -60,11 +66,21 @@ public class DefectService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public DefectResponse getDefectById(Long id) {
-        return mapToResponse(defectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Defect not found")));
+        Defect defect = defectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Defect", "id", id));
+        return mapToResponse(defect);
     }
 
+    @Transactional(readOnly = true)
+    public DefectResponse getDefectByPublicId(String publicId) {
+        Defect defect = defectRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Defect", "publicId", publicId));
+        return mapToResponse(defect);
+    }
+
+    @Transactional(readOnly = true)
     public List<DefectResponse> getDefectsByMachine(String machineCode) {
         return defectRepository.findByMachineCode(machineCode)
                 .stream()
@@ -72,6 +88,7 @@ public class DefectService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<DefectResponse> getDefectsByDepartment(String department) {
         return defectRepository.findByDepartment(department)
                 .stream()
@@ -79,6 +96,7 @@ public class DefectService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<DefectResponse> getDefectsBySeverity(DefectSeverity severity) {
         return defectRepository.findBySeverity(severity)
                 .stream()
@@ -86,6 +104,7 @@ public class DefectService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<DefectResponse> getDefectsByStatus(DefectStatus status) {
         return defectRepository.findByStatus(status)
                 .stream()
@@ -96,24 +115,37 @@ public class DefectService {
     public DefectResponse resolveDefect(Long id, String resolvedByEmail) {
 
         Defect defect = defectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Defect not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Defect", "id", id));
+
+        if (defect.getStatus() == DefectStatus.RESOLVED
+                || defect.getStatus() == DefectStatus.CLOSED) {
+            throw new InvalidOperationException(
+                    "Defect is already " + defect.getStatus());
+        }
 
         defect.setStatus(DefectStatus.RESOLVED);
         defect.setResolvedByEmail(resolvedByEmail);
         defect.setResolvedAt(LocalDateTime.now());
 
-        log.info("Defect {} resolved by: {}", id, resolvedByEmail);
+        Defect saved = defectRepository.save(defect);
 
-        return mapToResponse(defectRepository.save(defect));
+        log.info("Defect {} resolved by: {}", saved.getPublicId(), resolvedByEmail);
+
+        return mapToResponse(saved);
     }
 
     public void deleteDefect(Long id) {
+        if (!defectRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Defect", "id", id);
+        }
         defectRepository.deleteById(id);
+        log.info("Defect deleted: id={}", id);
     }
 
     private DefectResponse mapToResponse(Defect defect) {
         return DefectResponse.builder()
                 .id(defect.getId())
+                .publicId(defect.getPublicId())
                 .machineCode(defect.getMachineCode())
                 .department(defect.getDepartment())
                 .title(defect.getTitle())
@@ -124,6 +156,8 @@ public class DefectService {
                 .resolvedByEmail(defect.getResolvedByEmail())
                 .reportedAt(defect.getReportedAt())
                 .resolvedAt(defect.getResolvedAt())
+                .createdAt(defect.getCreatedAt())
+                .updatedAt(defect.getUpdatedAt())
                 .build();
     }
 }

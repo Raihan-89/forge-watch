@@ -35,3 +35,8 @@ build/
 **/application-local.properties
 .env
 .env.*
+
+# PlantUML downloaded jar
+plantuml.jar
+resource/images/plantuml.jar
+resource/

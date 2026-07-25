@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
+ * Response DTO for shift operations.
+ *
  * @author Md. Raihan Shikder (Raihan-89)
  */
 @Data
@@ -20,6 +22,8 @@ import java.util.List;
 public class ShiftResponse {
 
     private Long id;
+
+    private String publicId;
 
     private ShiftType shiftType;
 
@@ -36,4 +40,6 @@ public class ShiftResponse {
     private Integer actualProduction;
 
     private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 }

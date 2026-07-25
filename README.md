@@ -1,460 +1,730 @@
-# ForgeWatch
+# 🏭 ForgeWatch - Factory Floor Monitoring System
 
-ForgeWatch is a Spring Boot microservices backend for factory-floor monitoring. It tracks users, machines, shifts, production defects, and operational alerts. The system is designed around a central API Gateway, service-specific PostgreSQL schemas, RabbitMQ event delivery, Redis-backed password reset tokens, email notifications, and Twilio-based OTP/custom SMS support.
+<div align="center">
+  <p><strong>Production-Ready Microservices Backend for Industrial Factory Monitoring</strong></p>
+  <p>
+    <img src="https://img.shields.io/badge/Java-21-blue.svg" alt="Java 21"/>
+    <img src="https://img.shields.io/badge/Spring%20Boot-3.4.5-brightgreen.svg" alt="Spring Boot 3.4.5"/>
+    <img src="https://img.shields.io/badge/Spring%20Cloud%20Gateway-2024.0.1-blueviolet.svg" alt="Spring Cloud Gateway"/>
+    <img src="https://img.shields.io/badge/PostgreSQL-15-336791.svg" alt="PostgreSQL 15"/>
+    <img src="https://img.shields.io/badge/RabbitMQ-3-FF6600.svg" alt="RabbitMQ"/>
+    <img src="https://img.shields.io/badge/Redis-7-DC382D.svg" alt="Redis 7"/>
+    <img src="https://img.shields.io/badge/Twilio-Integration-red.svg" alt="Twilio Integration"/>
+    <img src="https://img.shields.io/badge/Docker-Compose-2496ED.svg" alt="Docker Compose"/>
+  </p>
+</div>
 
-## Architecture
+## 📋 Overview
 
-The project is a Maven multi-module workspace:
+ForgeWatch is a **production-ready, enterprise-grade microservices backend** designed for factory floor monitoring and management. Built with **Spring Boot 3.4.5** and a cloud-native architecture, it provides comprehensive capabilities for tracking machines, managing production shifts, reporting defects, and sending real-time alerts via email and SMS.
 
-| Module | Port | Responsibility |
-| --- | ---: | --- |
-| `api-gateway` | `8080` | Single entry point, request routing, JWT validation, user context forwarding |
-| `auth-service` | `8081` | User registration, login, JWT issuing |
-| `machine-service` | `8082` | Machine registration, status tracking, breakdown event publishing |
-| `shift-service` | `8083` | Shift planning, department/date lookup, production updates |
-| `defect-service` | `8084` | Defect reporting, filtering, resolution, high-severity event publishing |
-| `alert-service` | `8085` | RabbitMQ event listeners, supervisor email/SMS alerts, OTP, password reset |
+The system follows **industry best practices** including event-driven architecture, role-based access control, JWT authentication, centralized API gateway, distributed caching, and containerized deployment.
 
-Supporting infrastructure:
+### 🌟 Key Features
 
-| Service | Host Port | Use |
-| --- | ---: | --- |
-| PostgreSQL | `5433` | Main database, container port `5432` |
-| RabbitMQ | `5672` | Event broker |
-| RabbitMQ Management | `15672` | Broker UI |
-| Redis | `6379` | Password reset token storage |
+| Feature | Description |
+|---------|-------------|
+| **🔐 JWT Authentication** | Secure login with role-based access (ADMIN, SUPERVISOR, WORKER) |
+| **🏗️ Microservices Architecture** | 6 loosely-coupled services with API Gateway |
+| **📡 Event-Driven Messaging** | RabbitMQ for asynchronous event processing |
+| **🔔 Multi-Channel Alerts** | Email (SMTP) + SMS (Twilio) notifications |
+| **📊 Production Tracking** | Shift planning, machine status, defect management |
+| **🔍 API Documentation** | Swagger UI / OpenAPI 3.0 for all endpoints |
+| **📈 Health Monitoring** | Spring Boot Actuator with health checks and metrics |
+| **🔒 Security Best Practices** | Password validation, UUID public IDs, input sanitization |
+| **🐳 Containerized** | Docker Compose for one-command deployment |
 
-## Main Flow
+---
 
-1. A user registers or logs in through `auth-service`.
-2. The client sends the returned JWT as `Authorization: Bearer <token>` to protected API routes.
-3. `api-gateway` validates the JWT and forwards user context headers:
-   - `X-User-Email`
-   - `X-User-Role`
-   - `X-User-Department`
-4. `machine-service` publishes a RabbitMQ event when a machine status becomes `BREAKDOWN`.
-5. `defect-service` publishes a RabbitMQ event when a reported defect has severity `HIGH` or `CRITICAL`.
-6. `alert-service` consumes those events and sends supervisor notifications.
+## 🏛️ System Architecture
 
-## Tech Stack
-
-- Java 21
-- Spring Boot 3.4.5
-- Spring Cloud Gateway
-- Spring Security and JWT
-- Spring Data JPA
-- PostgreSQL 15
-- RabbitMQ
-- Redis
-- Spring Mail
-- Twilio Java SDK
-- Docker Compose
-- Maven multi-module build
-
-## Prerequisites
-
-- Docker and Docker Compose
-- Java 21
-- Maven Wrapper is included as `mvnw` / `mvnw.cmd`
-
-On Windows, if Maven wrapper reports `JAVA_HOME` is not set, set it to your JDK path:
-
-```powershell
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Client Applications                       │
+│         (Web App / Mobile App / Postman / Curl)             │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ HTTP/HTTPS (Authorization: Bearer JWT)
+                           ▼
+┌───────────────────────────────────────────────────────────────┐
+│                  API GATEWAY (Port 8080)                      │
+│              Spring Cloud Gateway + JWT Filter                │
+│                                                               │
+│  Routes: /api/auth/** → auth-service                          │
+│          /api/machines/** → machine-service                   │
+│          /api/shifts/** → shift-service                       │
+│          /api/defects/** → defect-service                     │
+│          /api/notifications/** → alert-service                │
+└──┬───────────┬───────────┬───────────┬───────────┬────────────┘
+   │           │           │           │           │
+   ▼           ▼           ▼           ▼           ▼
+┌──────┐  ┌──────────┐  ┌──────┐  ┌────────┐  ┌──────────────┐
+│Auth  │  │ Machine  │  │Shift │  │ Defect │  │   Alert      │
+│:8081 │  │ :8082    │  │:8083 │  │ :8084  │  │   :8085      │
+└──┬───┘  └──┬───────┘  └──┬───┘  └───┬────┘  └──────┬───────┘
+   │         │              │          │               │
+   │         │         ┌────┘          │         ┌─────┘
+   ▼         ▼         ▼              ▼         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     PostgreSQL 15                             │
+│     Schemas: auth, machine, shift, defect                    │
+└──────────────────────────────────────────────────────────────┘
+   │                        │
+   ▼                        ▼
+┌──────────────────────────────────────────────────────────────┐
+│  RabbitMQ                    │  Redis 7                      │
+│  machine.queue              │  Password Reset Tokens        │
+│  defect.queue               │  (TTL: 15 min)                │
+└─────────────────────────────┴────────────────────────────────┘
 ```
 
-## Environment Variables
+> 📁 **Architecture Diagram:** See [`resource/images/architecture.puml`](resource/images/architecture.puml) for a detailed PlantUML diagram. Generate the PNG using: `java -jar plantuml.jar -tpng resource/images/architecture.puml`
 
-Create a `.env` file in the repository root before starting Docker Compose:
+---
+
+## 🔧 Tech Stack
+
+### Core Framework
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Java | 21 | Runtime platform |
+| Spring Boot | 3.4.5 | Backend framework |
+| Spring Cloud Gateway | 2024.0.1 | API Gateway |
+| Spring Security | 6.x | Authentication & authorization |
+| Spring Data JPA | 3.x | Database access |
+| Spring AMQP | 3.x | RabbitMQ integration |
+
+### Database & Messaging
+| Technology | Port | Purpose |
+|------------|------|---------|
+| PostgreSQL | 5433 (host) / 5432 (container) | Main database |
+| RabbitMQ | 5672 (AMQP) / 15672 (Management UI) | Message broker |
+| Redis | 6379 | Token caching |
+
+### External Services
+| Service | Purpose |
+|---------|---------|
+| Gmail SMTP | Email notifications |
+| Twilio | SMS alerts & OTP verification |
+
+### Third-Party Libraries
+| Library | Purpose |
+|---------|---------|
+| JJWT (0.12.6) | JWT token management |
+| SpringDoc OpenAPI (2.8.6) | API documentation |
+| Lombok | Boilerplate code reduction |
+| Twilio Java SDK (10.1.0) | SMS integration |
+
+---
+
+## 📁 Project Structure
+
+```
+forge-watch/
+├── common/                          # Shared library module
+│   └── src/main/java/com/forgewatch/common/
+│       ├── config/                  # GlobalExceptionHandler, OpenApiConfig, JpaAuditingConfig
+│       ├── dto/                     # ApiResponse, ErrorResponse, PagedResponse
+│       └── exception/               # ResourceNotFoundException, DuplicateResourceException, InvalidOperationException
+│
+├── api-gateway/                     # Spring Cloud Gateway (Port 8080)
+│   └── src/main/java/com/forgewatch/api_gateway/
+│       ├── config/                  # CORS configuration
+│       ├── filter/                  # JWT authentication filter
+│       └── util/                    # JWT utility
+│
+├── auth-service/                    # Authentication Service (Port 8081)
+│   ├── controller/                  # Auth endpoints
+│   ├── service/                     # Business logic
+│   ├── security/                    # JWT, filters, user details
+│   ├── repository/                  # User repository
+│   ├── entity/                      # User entity with UUID publicId
+│   ├── dto/                         # Request/Response DTOs
+│   └── enums/                       # Role enum
+│
+├── machine-service/                 # Machine Management (Port 8082)
+│   ├── controller/                  # Machine CRUD endpoints
+│   ├── service/                     # Business logic with event publishing
+│   ├── repository/                  # Machine repository
+│   ├── entity/                      # Machine entity with auditing
+│   ├── dto/                         # Request/Response DTOs
+│   ├── config/                      # RabbitMQ configuration
+│   ├── messaging/                   # Event publisher
+│   └── enums/                       # MachineStatus enum
+│
+├── shift-service/                   # Shift Management (Port 8083)
+│   ├── controller/                  # Shift CRUD endpoints
+│   ├── service/                     # Business logic
+│   ├── repository/                  # Shift repository
+│   ├── entity/                      # Shift entity with worker assignments
+│   ├── dto/                         # Request/Response DTOs
+│   └── enums/                       # ShiftType enum
+│
+├── defect-service/                  # Defect Management (Port 8084)
+│   ├── controller/                  # Defect CRUD endpoints
+│   ├── service/                     # Business logic with alert publishing
+│   ├── repository/                  # Defect repository
+│   ├── entity/                      # Defect entity
+│   ├── dto/                         # Request/Response DTOs
+│   ├── config/                      # RabbitMQ configuration
+│   ├── messaging/                   # Event publisher
+│   └── enums/                       # DefectStatus, DefectSeverity enums
+│
+├── alert-service/                   # Notification Service (Port 8085)
+│   ├── controller/                  # Notification endpoints
+│   ├── service/                     # Email, SMS, Password reset services
+│   ├── listener/                    # RabbitMQ event listeners
+│   ├── config/                      # Twilio, Redis, RabbitMQ configurations
+│   └── dto/                         # Alert DTOs
+│
+├── resource/images/                 # Architecture and flow diagrams
+├── docker-compose.yml               # Full stack orchestration
+├── init-db.sql                      # Database schema initialization
+└── pom.xml                          # Maven parent POM
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Docker** and **Docker Compose** (recommended for full stack)
+- **Java 21** (for local development)
+- **Maven Wrapper** (included as `mvnw` / `mvnw.cmd`)
+
+### Environment Variables
+
+Create a `.env` file in the project root:
 
 ```env
-MAIL_USERNAME=your-gmail-address@gmail.com
-MAIL_PASSWORD=your-gmail-app-password
+# Gmail SMTP (use App Password, not regular password)
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
 
-TWILIO_ACCOUNT_SID=your-twilio-account-sid
-TWILIO_AUTH_TOKEN=your-twilio-auth-token
-TWILIO_VERIFY_SERVICE_SID=your-twilio-verify-service-sid
+# Twilio Configuration
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_VERIFY_SERVICE_SID=your_verify_service_sid
+TWILIO_FROM_PHONE_NUMBER=+1234567890
+TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-SUPERVISOR_EMAIL=supervisor@example.com
+# Notification Recipients
+SUPERVISOR_EMAIL=supervisor@factory.com
 SUPERVISOR_PHONE=+8801XXXXXXXXX
-
-# Optional: required only for custom breakdown/defect SMS text.
-# Twilio Verify Service can only send OTP messages.
-TWILIO_FROM_PHONE_NUMBER=
-TWILIO_MESSAGING_SERVICE_SID=
 ```
 
-Notes:
+### Deploy with Docker (Recommended)
 
-- `TWILIO_VERIFY_SERVICE_SID` is used for OTP only.
-- Custom SMS alert bodies require either `TWILIO_FROM_PHONE_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
-- If you only have a Twilio Verify Service, OTP will work but breakdown/defect SMS cannot contain custom alert text.
-- For Gmail SMTP, use an app password, not your normal Gmail password.
+```bash
+# 1. Build all services
+./mvnw clean package -DskipTests
 
-## Build and Run with Docker
-
-Build the Spring Boot jars first:
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-Start all services:
-
-```powershell
+# 2. Start the entire stack
 docker compose up -d --build
-```
 
-Check status:
-
-```powershell
+# 3. Check status
 docker compose ps
-```
 
-View logs:
-
-```powershell
+# 4. View logs
 docker compose logs -f api-gateway
-docker compose logs -f alert-service
 ```
 
-Stop the stack:
+### Local Development
 
-```powershell
-docker compose down
+```bash
+# 1. Start infrastructure
+docker compose up -d forgewatchdb rabbitmq redis
+
+# 2. Start services individually (in separate terminals)
+./mvnw -pl auth-service spring-boot:run
+./mvnw -pl machine-service spring-boot:run
+./mvnw -pl shift-service spring-boot:run
+./mvnw -pl defect-service spring-boot:run
+./mvnw -pl alert-service spring-boot:run
+./mvnw -pl api-gateway spring-boot:run
 ```
 
-Stop and remove database data:
+### Verify Deployment
 
-```powershell
-docker compose down -v
+```bash
+# Health checks
+curl http://localhost:8080/actuator/health
+curl http://localhost:8081/actuator/health
+curl http://localhost:8082/actuator/health
+# ... (all services should return {"status": "UP"})
+
+# Swagger UI
+open http://localhost:8080/swagger-ui.html
 ```
 
-## Database Setup
+---
 
-PostgreSQL starts with database:
+## 📖 API Documentation
 
-```text
-forgewatchdb
+### Swagger UI
+
+Each service exposes its own Swagger UI:
+
+| Service | Swagger URL |
+|---------|-------------|
+| API Gateway | `http://localhost:8080/swagger-ui.html` |
+| Auth Service | `http://localhost:8081/swagger-ui.html` |
+| Machine Service | `http://localhost:8082/swagger-ui.html` |
+| Shift Service | `http://localhost:8083/swagger-ui.html` |
+| Defect Service | `http://localhost:8084/swagger-ui.html` |
+| Alert Service | `http://localhost:8085/swagger-ui.html` |
+
+### Authentication Flow
+
+```mermaid
+sequenceDiagram
+    Client->>API Gateway: POST /api/auth/register
+    API Gateway->>Auth Service: Forward request
+    Auth Service->>PostgreSQL: Save user
+    Auth Service-->>Auth Service: Generate JWT
+    Auth Service-->>API Gateway: AuthResponse with token
+    API Gateway-->>Client: 201 Created + JWT
+
+    Note over Client,API Gateway: Login with credentials
+
+    Client->>API Gateway: POST /api/auth/login
+    API Gateway->>Auth Service: Forward request
+    Auth Service-->>Auth Service: Validate credentials
+    Auth Service-->>API Gateway: AuthResponse with JWT
+    API Gateway-->>Client: 200 OK + Bearer Token
+
+    Note over Client,API Gateway: Authenticated requests
+
+    Client->>API Gateway: GET /api/machines (Authorization: Bearer <JWT>)
+    API Gateway-->>API Gateway: Validate JWT
+    API Gateway->>Machine Service: Forward + user context headers
+    Machine Service-->>API Gateway: Response data
+    API Gateway-->>Client: 200 OK
 ```
 
-The `init-db.sql` file creates these schemas:
+### Public Endpoints (No JWT Required)
 
-```sql
-auth
-machine
-shift
-defect
+```http
+POST /api/auth/register
+POST /api/auth/login
+POST /api/notifications/forgot-password
+POST /api/notifications/validate-token
+POST /api/notifications/reset-password
+POST /api/notifications/send-otp
+POST /api/notifications/verify-otp
 ```
 
-Each Spring service uses Hibernate `ddl-auto=update` to create/update its own tables.
-
-## API Gateway
-
-Use the gateway for normal API calls:
-
-```text
-http://localhost:8080
-```
-
-The gateway routes:
-
-| Path | Service |
-| --- | --- |
-| `/api/auth/**` | `auth-service` |
-| `/api/machines/**` | `machine-service` |
-| `/api/shifts/**` | `shift-service` |
-| `/api/defects/**` | `defect-service` |
-| `/api/notifications/**` | `alert-service` |
-
-Open endpoints:
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/notifications/forgot-password`
-- `POST /api/notifications/validate-token`
-- `POST /api/notifications/reset-password`
-- `POST /api/notifications/send-otp`
-- `POST /api/notifications/verify-otp`
+### Protected Endpoints (JWT Required)
 
 All other endpoints require:
-
 ```http
 Authorization: Bearer <jwt-token>
 ```
 
-## API Examples
+#### Machines
 
-### Register
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/machines` | Register a new machine |
+| `GET` | `/api/machines` | Get all machines |
+| `GET` | `/api/machines/paged?page=0&size=20` | Get machines with pagination |
+| `GET` | `/api/machines/{id}` | Get machine by database ID |
+| `GET` | `/api/machines/public/{publicId}` | Get machine by public ID (e.g., MCH-XXXXXXXX) |
+| `GET` | `/api/machines/department/{department}` | Get machines by department |
+| `GET` | `/api/machines/status/{status}` | Get machines by operational status |
+| `PUT` | `/api/machines/{id}/status?status=BREAKDOWN` | Update machine status (triggers alerts) |
+| `DELETE` | `/api/machines/{id}` | Delete a machine |
 
+#### Shifts
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/shifts` | Create a new shift |
+| `GET` | `/api/shifts` | Get all shifts |
+| `GET` | `/api/shifts/{id}` | Get shift by database ID |
+| `GET` | `/api/shifts/public/{publicId}` | Get shift by public ID (e.g., SFT-XXXXXXXX) |
+| `GET` | `/api/shifts/department/{department}` | Get shifts by department |
+| `GET` | `/api/shifts/date/{date}` | Get shifts by date (ISO format) |
+| `GET` | `/api/shifts/department/{department}/date/{date}` | Filter by department and date |
+| `PUT` | `/api/shifts/{id}/production?actualProduction=450` | Update production output |
+| `DELETE` | `/api/shifts/{id}` | Delete a shift |
+
+#### Defects
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/defects` | Report a new defect |
+| `GET` | `/api/defects` | Get all defects |
+| `GET` | `/api/defects/{id}` | Get defect by database ID |
+| `GET` | `/api/defects/public/{publicId}` | Get defect by public ID (e.g., DFT-XXXXXXXX) |
+| `GET` | `/api/defects/machine/{machineCode}` | Get defects by machine code |
+| `GET` | `/api/defects/department/{department}` | Get defects by department |
+| `GET` | `/api/defects/severity/{severity}` | Get defects by severity (LOW/MEDIUM/HIGH/CRITICAL) |
+| `GET` | `/api/defects/status/{status}` | Get defects by status (OPEN/IN_PROGRESS/RESOLVED/CLOSED) |
+| `PUT` | `/api/defects/{id}/resolve` | Resolve a defect |
+| `DELETE` | `/api/defects/{id}` | Delete a defect |
+
+#### Notifications
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/notifications/forgot-password` | Request password reset |
+| `POST` | `/api/notifications/validate-token` | Validate reset token |
+| `POST` | `/api/notifications/reset-password` | Reset password with token |
+| `POST` | `/api/notifications/send-otp` | Send OTP to phone number |
+| `POST` | `/api/notifications/verify-otp` | Verify OTP code |
+
+### Request/Response Examples
+
+#### Register User
 ```http
 POST http://localhost:8080/api/auth/register
 Content-Type: application/json
-```
 
-```json
 {
   "fullName": "Factory Supervisor",
   "username": "supervisor1",
-  "email": "supervisor@example.com",
-  "password": "password123",
-  "department": "Casting"
+  "email": "supervisor@factory.com",
+  "password": "Secure@123",
+  "department": "Casting",
+  "phoneNumber": "+8801XXXXXXXXX"
 }
 ```
 
-### Login
-
-```http
-POST http://localhost:8080/api/auth/login
-Content-Type: application/json
-```
-
+**Response:**
 ```json
 {
-  "email": "supervisor@example.com",
-  "password": "password123"
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600000,
+    "publicId": "USR-A1B2C3D4",
+    "fullName": "Factory Supervisor",
+    "email": "supervisor@factory.com",
+    "role": "WORKER",
+    "department": "Casting"
+  },
+  "timestamp": "2026-07-25T12:00:00"
 }
 ```
 
-The response contains a JWT token.
-
-### Register a Machine
-
+#### Register Machine
 ```http
 POST http://localhost:8080/api/machines
-Authorization: Bearer <jwt-token>
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 Content-Type: application/json
-```
 
-```json
 {
   "machineCode": "MCH-001",
   "machineName": "Hydraulic Press",
   "department": "Casting",
   "location": "Line A",
-  "description": "Main press machine"
+  "description": "Main hydraulic press machine for metal forming"
 }
 ```
 
-### Trigger a Machine Breakdown Alert
-
+#### Trigger Breakdown Alert
 ```http
 PUT http://localhost:8080/api/machines/1/status?status=BREAKDOWN
-Authorization: Bearer <jwt-token>
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 ```
 
-This publishes a RabbitMQ event to `machine.queue`. `alert-service` consumes the event and sends supervisor notifications.
+This will:
+1. Update the machine status to BREAKDOWN
+2. Publish a RabbitMQ event
+3. Alert Service sends email + SMS to supervisor
 
-Supported machine statuses:
-
-```text
-RUNNING, IDLE, MAINTENANCE, BREAKDOWN
-```
-
-### Create a Shift
-
-```http
-POST http://localhost:8080/api/shifts
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "shiftType": "MORNING",
-  "department": "Casting",
-  "shiftDate": "2026-06-07",
-  "supervisorEmail": "supervisor@example.com",
-  "workerEmails": ["worker1@example.com", "worker2@example.com"],
-  "productionTarget": 500
-}
-```
-
-Supported shift types:
-
-```text
-MORNING, AFTERNOON, NIGHT
-```
-
-### Report a Defect
-
+#### Report Critical Defect
 ```http
 POST http://localhost:8080/api/defects
-Authorization: Bearer <jwt-token>
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 Content-Type: application/json
-```
 
-```json
 {
   "machineCode": "MCH-001",
   "department": "Casting",
-  "title": "Oil leakage",
-  "description": "Hydraulic oil leaking near pressure line",
-  "severity": "HIGH"
+  "title": "Hydraulic oil leakage",
+  "description": "Major oil leak detected near pressure line. Immediate shutdown recommended.",
+  "severity": "CRITICAL"
 }
 ```
 
-`HIGH` and `CRITICAL` defects publish a RabbitMQ event to `defect.queue`.
+**Data Types:**
 
-Supported defect severities:
+| Enum | Values |
+|------|--------|
+| `MachineStatus` | `RUNNING`, `IDLE`, `MAINTENANCE`, `BREAKDOWN` |
+| `ShiftType` | `MORNING`, `AFTERNOON`, `NIGHT` |
+| `DefectStatus` | `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED` |
+| `DefectSeverity` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
+| `Role` | `ADMIN`, `SUPERVISOR`, `WORKER` |
 
-```text
-LOW, MEDIUM, HIGH, CRITICAL
+---
+
+## 🗄️ Database Schema
+
+The system uses PostgreSQL with separate schemas per service:
+
+```sql
+-- Schemas
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS machine;
+CREATE SCHEMA IF NOT EXISTS shift;
+CREATE SCHEMA IF NOT EXISTS defect;
 ```
 
-Supported defect statuses:
+Hibernate `ddl-auto=update` automatically manages table creation/updates.
 
-```text
-OPEN, IN_PROGRESS, RESOLVED, CLOSED
+### Entity Relationships
+
+- **User** → Auth schema — Role-based access (ADMIN, SUPERVISOR, WORKER)
+- **Machine** → Machine schema — Tracks operational status and maintenance
+- **Shift** → Shift schema — Linked to workers via `shift_workers` join table
+- **Defect** → Defect schema — Referenced by machine code and reporter email
+
+---
+
+## 🔄 Event-Driven Flow
+
+### Machine Breakdown Flow
+```
+1. Client → PUT /api/machines/{id}/status?status=BREAKDOWN
+2. Machine Service updates status
+3. Machine Service publishes to machine.exchange → machine.queue
+4. Alert Service consumes the event
+5. Email sent to supervisor via Gmail SMTP
+6. SMS sent to supervisor via Twilio
 ```
 
-### OTP
-
-```http
-POST http://localhost:8080/api/notifications/send-otp
-Content-Type: application/json
+### Defect Alert Flow
+```
+1. Client → POST /api/defects (with severity: HIGH or CRITICAL)
+2. Defect Service saves the defect
+3. Defect Service publishes to defect.exchange → defect.queue
+4. Alert Service consumes the event
+5. Email + SMS notifications sent to supervisor
 ```
 
+### Password Reset Flow
+```
+1. Client → POST /api/notifications/forgot-password
+2. Alert Service generates UUID token
+3. Token stored in Redis with 15-minute TTL
+4. Reset link sent via email
+5. Client → POST /api/notifications/reset-password with token
+```
+
+---
+
+## 🔐 Security Features
+
+### Authentication & Authorization
+- **JWT-based** authentication with configurable expiration
+- **BCrypt password hashing** with strength-based encoding
+- **Role-based access** (ADMIN, SUPERVISOR, WORKER)
+- **Input validation** with comprehensive constraints
+  - Password strength requirements (uppercase, lowercase, digit, special char)
+  - Email format validation
+  - Phone number validation (E.164 format)
+  - Username format validation
+
+### API Security
+- **UUID public IDs** instead of sequential IDs for external references
+- **Consistent error responses** (no stack trace leakage)
+- **API Gateway** as single entry point — services not directly exposed
+- **CORS configuration** (customizable for production)
+- **Input sanitization** via Jakarta Validation annotations
+
+### Infrastructure Security
+- **Environment variables** for all secrets (no hardcoded credentials)
+- **PostgreSQL** with separate schemas per service (logical isolation)
+- **Docker networking** with internal bridge network
+
+---
+
+## 🧪 Error Handling
+
+The system uses a centralized error handling approach via `@RestControllerAdvice`:
+
+| HTTP Status | Error Type | Scenario |
+|-------------|------------|----------|
+| `400 Bad Request` | `InvalidOperationException` | Invalid operations, validation failures |
+| `400 Bad Request` | Validation Error | Invalid input format, missing fields |
+| `404 Not Found` | `ResourceNotFoundException` | Resource not found by ID or publicId |
+| `409 Conflict` | `DuplicateResourceException` | Duplicate email, username, machine code |
+| `500 Internal Server Error` | Generic Exception | Unexpected server errors |
+
+**Error Response Format:**
 ```json
 {
-  "phoneNumber": "+8801XXXXXXXXX"
+  "status": 404,
+  "error": "Not Found",
+  "message": "Machine not found with id: 999",
+  "path": "/api/machines/999",
+  "timestamp": "2026-07-25T12:00:00"
 }
 ```
 
-```http
-POST http://localhost:8080/api/notifications/verify-otp
-Content-Type: application/json
-```
-
+**Validation Error Response:**
 ```json
 {
-  "phoneNumber": "+8801XXXXXXXXX",
-  "otpCode": "123456"
+  "status": 400,
+  "error": "Validation Failed",
+  "message": "Input validation failed. Check validationErrors for details.",
+  "path": "/api/auth/register",
+  "timestamp": "2026-07-25T12:00:00",
+  "validationErrors": [
+    {
+      "field": "password",
+      "message": "Password must contain at least one digit, one lowercase, one uppercase, and one special character",
+      "rejectedValue": "weak"
+    }
+  ]
 }
 ```
 
-## Useful Endpoints
+---
 
-### Machines
+## 📊 Monitoring & Health
 
-- `POST /api/machines`
-- `GET /api/machines`
-- `GET /api/machines/{id}`
-- `GET /api/machines/department/{department}`
-- `GET /api/machines/status/{status}`
-- `PUT /api/machines/{id}/status?status=BREAKDOWN`
-- `DELETE /api/machines/{id}`
+Each service exposes Spring Boot Actuator endpoints:
 
-### Shifts
+| Endpoint | Description |
+|----------|-------------|
+| `/actuator/health` | Health check with database, RabbitMQ, Redis status |
+| `/actuator/info` | Application info (name, version, description) |
+| `/actuator/metrics` | JVM, system, and request metrics |
+| `/actuator/env` | Environment properties (filtered) |
 
-- `POST /api/shifts`
-- `GET /api/shifts`
-- `GET /api/shifts/{id}`
-- `GET /api/shifts/department/{department}`
-- `GET /api/shifts/date/{date}`
-- `GET /api/shifts/department/{department}/date/{date}`
-- `PUT /api/shifts/{id}/production?actualProduction=450`
-- `DELETE /api/shifts/{id}`
+---
 
-### Defects
+## 🐳 Docker Configuration
 
-- `POST /api/defects`
-- `GET /api/defects`
-- `GET /api/defects/{id}`
-- `GET /api/defects/machine/{machineCode}`
-- `GET /api/defects/department/{department}`
-- `GET /api/defects/severity/{severity}`
-- `GET /api/defects/status/{status}`
-- `PUT /api/defects/{id}/resolve`
-- `DELETE /api/defects/{id}`
+```yaml
+# Infrastructure
+- forgewatchdb (PostgreSQL 15) :5433
+- rabbitmq (3-management) :5672, :15672
+- redis (7) :6379
 
-### Notifications
-
-- `POST /api/notifications/forgot-password`
-- `POST /api/notifications/validate-token`
-- `POST /api/notifications/reset-password`
-- `POST /api/notifications/send-otp`
-- `POST /api/notifications/verify-otp`
-
-## Local Development Without Docker
-
-Run infrastructure with Docker:
-
-```powershell
-docker compose up -d forgewatchdb rabbitmq redis
+# Microservices
+- auth-service :8081
+- api-gateway :8080
+- machine-service :8082
+- shift-service :8083
+- defect-service :8084
+- alert-service :8085
 ```
 
-Then run services from separate terminals:
+### Useful Docker Commands
 
-```powershell
-.\mvnw.cmd -pl auth-service spring-boot:run
-.\mvnw.cmd -pl machine-service spring-boot:run
-.\mvnw.cmd -pl shift-service spring-boot:run
-.\mvnw.cmd -pl defect-service spring-boot:run
-.\mvnw.cmd -pl alert-service spring-boot:run
-.\mvnw.cmd -pl api-gateway spring-boot:run
+```bash
+# Start all services
+docker compose up -d --build
+
+# View logs for a specific service
+docker compose logs -f api-gateway
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (reset database)
+docker compose down -v
+
+# Scale a service
+docker compose up -d --scale shift-service=2
 ```
 
-For local runs, service `application.properties` files default to:
+---
 
-- PostgreSQL: `localhost:5433`
-- RabbitMQ: `localhost:5672`
-- Redis: `localhost:6379`
+## ⚙️ Configuration Reference
 
-## Troubleshooting
+### Auth Service (`application.properties`)
+| Property | Default | Description |
+|----------|---------|-------------|
+| `jwt.secret` | `JWT_SECRET` env | JWT signing key |
+| `jwt.expiration` | `3600000` | Token TTL (ms) |
+| `spring.datasource.url` | `jdbc:postgresql://localhost:5433/forgewatchdb` | Database URL |
 
-### Postman shows `ECONNREFUSED`
+### Machine / Defect Services
+| Property | Default | Description |
+|----------|---------|-------------|
+| `spring.rabbitmq.host` | `localhost` | RabbitMQ host |
+| `spring.rabbitmq.port` | `5672` | RabbitMQ port |
 
-Check that `api-gateway` is running:
+### Alert Service
+| Property | Default | Description |
+|----------|---------|-------------|
+| `twilio.account-sid` | `TWILIO_ACCOUNT_SID` env | Twilio account SID |
+| `twilio.auth-token` | `TWILIO_AUTH_TOKEN` env | Twilio auth token |
+| `twilio.verify.service-sid` | `TWILIO_VERIFY_SERVICE_SID` env | Verify service SID |
+| `spring.mail.username` | `MAIL_USERNAME` env | Gmail SMTP username |
+| `spring.mail.password` | `MAIL_PASSWORD` env | Gmail SMTP password |
+| `notification.supervisor.email` | `SUPERVISOR_EMAIL` env | Alert recipient email |
+| `notification.supervisor.phone` | `SUPERVISOR_PHONE` env | Alert recipient phone |
 
-```powershell
-docker compose ps api-gateway
-docker compose logs --tail 100 api-gateway
+---
+
+## 🧰 Development
+
+### Build All Services
+```bash
+./mvnw clean package -DskipTests
 ```
 
-The gateway should expose:
-
-```text
-0.0.0.0:8080->8080/tcp
+### Run Tests
+```bash
+./mvnw test
 ```
 
-### Gateway cannot reach a service in Docker
-
-Inside Docker, `localhost` means the current container. The gateway must use Compose service names such as:
-
-```text
-http://auth-service:8081
-http://machine-service:8082
+### Build Single Service
+```bash
+./mvnw -pl machine-service clean package -DskipTests
 ```
 
-The provided `docker-compose.yml` sets those values through environment variables.
+---
 
-### RabbitMQ connection errors during startup
+## 📝 Project Roadmap
 
-Short-lived startup errors can happen while RabbitMQ is still opening port `5672`. If logs later show `Created new connection`, the service recovered.
+- [x] Authentication & Authorization (JWT)
+- [x] Machine management with status tracking
+- [x] Shift planning and production tracking
+- [x] Defect reporting and resolution workflow
+- [x] Email and SMS alert notifications
+- [x] API Gateway with centralized routing
+- [x] Event-driven architecture (RabbitMQ)
+- [x] Password reset with Redis token storage
+- [x] OTP verification via Twilio
+- [x] Swagger/OpenAPI documentation
+- [x] Health monitoring (Actuator)
+- [x] UUID public IDs for security
+- [x] Global exception handling
+- [x] Input validation and sanitization
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Kubernetes deployment manifests
+- [ ] Grafana dashboards for metrics
+- [ ] ELK stack for centralized logging
+- [ ] Frontend web application (React/Angular)
+- [ ] Rate limiting and API throttling
+- [ ] Service discovery (Eureka/Consul)
 
-### Email log says sent but no email arrives
+---
 
-`alert-service` logs success after Gmail SMTP accepts the message. If it does not arrive:
+## 👨‍💻 Author
 
-- Confirm `SUPERVISOR_EMAIL` in `.env`.
-- Check spam/promotions.
-- Confirm `MAIL_USERNAME` and Gmail app password are valid.
-- Check Gmail account security restrictions.
+**Md. Raihan Shikder** (@Raihan-89)
 
-### SMS sends OTP instead of breakdown text
+- GitHub: [https://github.com/Raihan-89](https://github.com/Raihan-89)
 
-That means the alert path is using Twilio Verify. Verify only sends OTP messages. Custom alert SMS requires:
+---
 
-```env
-TWILIO_FROM_PHONE_NUMBER=+1xxxxxxxxxx
-```
+## 📄 License
 
-or:
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-```env
-TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
+---
 
-The Messaging Service must be configured in Twilio with a valid sender.
+## 🙏 Support
 
+For support, feature requests, or bug reports, please open an issue on the GitHub repository or contact the author.

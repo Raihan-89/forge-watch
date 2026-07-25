@@ -6,8 +6,11 @@ import com.forgewatch.defect_service.enums.DefectStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface DefectRepository extends JpaRepository<Defect, Long> {
+
+    Optional<Defect> findByPublicId(String publicId);
 
     List<Defect> findByMachineCode(String machineCode);
 

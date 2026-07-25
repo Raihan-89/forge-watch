@@ -4,9 +4,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
+ * Shift Service - Handles shift planning, worker assignments, and production tracking.
+ *
  * @author Md. Raihan Shikder (Raihan-89)
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.forgewatch"})
 public class ShiftServiceApplication {
 
 	public static void main(String[] args) {

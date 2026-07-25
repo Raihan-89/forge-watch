@@ -7,12 +7,17 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
+ * Repository for Shift entity operations.
+ *
  * @author Md. Raihan Shikder (Raihan-89)
  */
 @Repository
 public interface ShiftRepository extends JpaRepository<Shift, Long> {
+
+    Optional<Shift> findByPublicId(String publicId);
 
     List<Shift> findByDepartment(String department);
 

@@ -9,10 +9,14 @@ import java.util.List;
 import java.util.Optional;
 
 /**
+ * Repository for Machine entity operations.
+ *
  * @author Md. Raihan Shikder (Raihan-89)
  */
 @Repository
 public interface MachineRepository extends JpaRepository<Machine, Long> {
+
+    Optional<Machine> findByPublicId(String publicId);
 
     Optional<Machine> findByMachineCode(String machineCode);
 
